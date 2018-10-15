@@ -4,12 +4,11 @@ import "net/http"
 import "encoding/json"
 import "fmt"
 import "bytes"
-import "strconv"
 
 const TasksUrl string = DefaultUrl + "/tasks"
 
 type Task struct {
-	Id           int    `json:"id"`
+	Id           string `json:"id,Number"`
 	ProjectId    int    `json:"project_id"`
 	Content      string `json:"content"`
 	Completed    bool   `json:"completed"`
@@ -20,6 +19,11 @@ type Task struct {
 	Due          Due    `json:"due"`
 	Url          string `json:"url"`
 	CommentCount int    `json:"comment_count"`
+}
+
+type jTask struct {
+	Task
+	Id int `json:"id"`
 }
 
 type NewTask struct {
@@ -39,6 +43,19 @@ type Due struct {
 	Date     string `json:"date"`   // required
 	Datetime string `json:"datetime"`
 	Timezone string `json:"timezone"`
+}
+
+func (t *Task) UnmarshalJSON(b []byte) error {
+	var task jTask
+
+	err := json.Unmarshal(b, &task)
+	if err != nil {
+		return err
+	}
+
+	*t = task.Task
+
+	return nil
 }
 
 func (c *Client) GetTasks() ([]Task, error) {
@@ -62,25 +79,25 @@ func (c *Client) GetTasks() ([]Task, error) {
 	return tasks, nil
 }
 
-func (c *Client) GetTask(id int) (Task, error) {
+func (c *Client) GetTask(id string) (*Task, error) {
 	var task Task
 
-	req, err := http.NewRequest("GET", fmt.Sprintf(TasksUrl+"/%d", id), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(TasksUrl+"/%s", id), nil)
 	if err != nil {
-		return task, err
+		return nil, err
 	}
 
 	res, err := c.doRequest(req)
 	if err != nil {
-		return task, err
+		return nil, err
 	}
 
 	err = json.Unmarshal(res, &task)
 	if err != nil {
-		return task, err
+		return nil, err
 	}
 
-	return task, nil
+	return &task, nil
 }
 
 func (c *Client) CreateTask(t *NewTask) (*Task, error) {
@@ -110,8 +127,8 @@ func (c *Client) CreateTask(t *NewTask) (*Task, error) {
 	return &task, nil
 }
 
-func (c *Client) CloseTask(t *Task) error {
-	req, err := http.NewRequest("POST", TasksUrl+"/"+strconv.Itoa(t.Id)+"/close", nil)
+func (c *Client) CloseTask(id string) error {
+	req, err := http.NewRequest("POST", TasksUrl+"/"+id+"/close", nil)
 	if err != nil {
 		return err
 	}
@@ -121,13 +138,11 @@ func (c *Client) CloseTask(t *Task) error {
 		return err
 	}
 
-	t.Completed = true
-
 	return nil
 }
 
-func (c *Client) ReopenTask(t *Task) error {
-	req, err := http.NewRequest("POST", TasksUrl+"/"+strconv.Itoa(t.Id)+"/reopen", nil)
+func (c *Client) ReopenTask(id string) error {
+	req, err := http.NewRequest("POST", TasksUrl+"/"+id+"/reopen", nil)
 	if err != nil {
 		return err
 	}
@@ -137,13 +152,11 @@ func (c *Client) ReopenTask(t *Task) error {
 		return err
 	}
 
-	t.Completed = false
-
 	return nil
 }
 
-func (c *Client) DeleteTask(t *Task) error {
-	req, err := http.NewRequest("DELETE", TasksUrl+"/"+strconv.Itoa(t.Id), nil)
+func (c *Client) DeleteTask(id string) error {
+	req, err := http.NewRequest("DELETE", TasksUrl+"/"+id, nil)
 	if err != nil {
 		return err
 	}
@@ -162,7 +175,7 @@ func (c *Client) UpdateTask(t *Task) error {
 		return err
 	}
 
-	req, err := http.NewRequest("POST", TasksUrl+"/"+strconv.Itoa(t.Id), bytes.NewBuffer(j))
+	req, err := http.NewRequest("POST", TasksUrl+"/"+t.Id, bytes.NewBuffer(j))
 	if err != nil {
 		return err
 	}
