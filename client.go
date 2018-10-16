@@ -4,7 +4,8 @@ import "net/http"
 import "fmt"
 import "io/ioutil"
 
-const DefaultUrl string = "https://beta.todoist.com/API/v8"
+const DefaultRestUrl string = "https://beta.todoist.com/API/v8"
+const DefaultSyncUrl string = "https://todoist.com/api/v7"
 
 type Client struct {
 	HttpClient *http.Client
@@ -21,7 +22,7 @@ func NewClient(apiKey string) *Client {
 }
 
 func (c *Client) newRequest(path string) (*http.Request, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s", DefaultUrl, path), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s", DefaultRestUrl, path), nil)
 	if err != nil {
 		return nil, err
 	}
